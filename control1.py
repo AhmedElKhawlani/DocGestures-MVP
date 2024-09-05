@@ -8,41 +8,39 @@ import datetime
 from alert import *
 from get_data_from_widget import *
 
-# ************************************************************************************************************
-# ****************************************** Function to get info *********************************************
-# ************************************************************************************************************
-
 
 def get_info():
     global data
-    BD = sql.connect('data/DOC HAJAR.db')
+    BD = sql.connect('data/data.db')
     cur = BD.cursor()
     patient = str(combo_patient.get())
-    stat1 = """ SELECT SEX FROM Patients WHERE ID = """ + patient.split()[0]
-    stat2 = """ SELECT BIRTH_YEAR FROM Patients WHERE ID = """ + patient.split()[0]
+    ID = patient.split()[0]
+    stat1 = " SELECT Gender FROM Patients WHERE ID = " + ID
+    stat2 = " SELECT Year_of_Birth FROM Patients WHERE ID = " + ID
     cur.execute(stat1)
-    sex = cur.fetchall()[0][0]
+    sexe = cur.fetchall()[0][0]
     cur.execute(stat2)
-    birth_year = cur.fetchall()[0][0]
+    annee = cur.fetchall()[0][0]
     today = datetime.date.today()
-    current_year = today.year
-    age = current_year - birth_year
-    label_sex = Label(control1, text=sex)
-    label_age = Label(control1, text=str(age) + " years")
-    label_sex.grid(column=15, row=1, padx=10, pady=10, columnspan=10)
+    year = today.year
+    age = year - annee
+    label_sexe = Label(control1, text=sexe)
+    label_age = Label(control1, text=str(age) + " ans")
+    label_sexe.grid(column=15, row=1, padx=10, pady=10, columnspan=10)
     label_age.grid(column=20, row=1, padx=10, pady=10, columnspan=10)
-
-    stat3 = """ SELECT * FROM Consultations WHERE Patient_ID = """ + patient.split()[0] + """ ORDER BY Consultation_Date DESC"""
+    stat3 = """ SELECT * FROM Consultations WHERE Patient_ID = """ + ID + """ ORDER BY Date_Consultation DESC"""
     cur.execute(stat3)
-
     try:
         data = cur.fetchall()[0]
-        (consultation_date, consultation_reason, history, exams, prescription,
-         requested_tests, results, specialist, specialist_opinion) = tuple(data[2:11])
-
-        label_last_consultation = Label(
-            control1, text="Last Consultation Date: " + consultation_date)
-        label_last_consultation.grid(column=20, row=2, padx=10, pady=10, columnspan=10)
+        (date_consult, motif_consult, antecedent_consult, examens_consult,
+         ordonance_consult, bilan_consult, resultats, specialiste_consult,
+         avis_specialiste) = tuple(data[2:11])
+        label_date_consultation = Label(
+            control1,
+            text="Date of the last consultation : " + date_consult
+        )
+        label_date_consultation.grid(column=20, row=2, padx=10, pady=10,
+                                     columnspan=10)
 
         entry_reason.delete(0.0, END)
         entry_history.delete(0.0, END)
@@ -53,40 +51,34 @@ def get_info():
         entry_result.delete(0.0, END)
         entry_specialist_opinion.delete(0.0, END)
 
-        entry_reason.insert(0.0, consultation_reason)
-        entry_history.insert(0.0, history)
-        entry_exam.insert(0.0, exams)
-        entry_prescription.insert(0.0, prescription)
-        entry_tests.insert(0.0, requested_tests)
-        entry_specialist.insert(0, specialist)
-        entry_result.insert(0.0, results)
-        entry_specialist_opinion.insert(0.0, specialist_opinion)
-    except:
-        alert("Error", "The patient has not had any consultation yet")
+        entry_reason.insert(0.0, motif_consult)
+        entry_history.insert(0.0, antecedent_consult)
+        entry_exam.insert(0.0, examens_consult)
+        entry_prescription.insert(0.0, ordonance_consult)
+        entry_tests.insert(0.0, bilan_consult)
+        entry_specialist.insert(0, specialiste_consult)
+        entry_result.insert(0.0, resultats)
+        entry_specialist_opinion.insert(0.0, avis_specialiste)
 
-# ************************************************************************************************************
-# ********************************* Save consult data into the database **************************************
-# ************************************************************************************************************
+    except Exception as e:
+        alert("Error",
+              f"Error: {str(e)},the patient didn't do any consultation")
 
 
 def save_record():
     try:
-        BD = sql.connect('data/DOC HAJAR.db')
+        BD = sql.connect('data/data.db')
         cur = BD.cursor()
-        patient_id = str(data[0])
+        consult_id = str(data[0])
         control1_content = get_text_from_text_widget(entry_control1, 0)
-        stat = """ UPDATE Consultations SET Control1 = """ + control1_content[:-2] + """ WHERE ID = """ + patient_id
+        stat = """ UPDATE Consultations SET Followup1 = """ + control1_content[:-2] + """ WHERE ID = """ + consult_id
         cur.execute(stat)
         BD.commit()
         control1.destroy()
         alert("Success", "Saved Successfully")
-    except:
-        alert("Error", "Data not saved")
-
-
-# ************************************************************************************************************
-# ************************************ Function to show control1 window ***************************************
-# ************************************************************************************************************
+    except Exception as e:
+        alert("Error",
+              f"Error: {str(e)}, data not saved")
 
 
 def show_control1():
@@ -95,13 +87,12 @@ def show_control1():
     global entry_result, entry_specialist, entry_specialist_opinion, entry_control1, entry_control2
 
     control1 = Tk()
-    control1.title("DOC HAJAR - Control 1")
-    control1.wm_iconbitmap('data/Hajar.ico')
+    control1.title("DOC GESTURES - Control 1")
     control1.resizable(width=False, height=False)
 
-    BD = sql.connect('data/DB.db')
+    BD = sql.connect('data/data.db')
     cur = BD.cursor()
-    stat3 = """SELECT ID, LastName, FirstName FROM Patients ORDER BY LastName"""
+    stat3 = """SELECT ID, Last_Name, First_Name FROM Patients ORDER BY Last_Name"""
     cur.execute(stat3)
     patient_names = cur.fetchall()
     for i in range(len(patient_names)):
@@ -134,7 +125,8 @@ def show_control1():
     button_get_data = Button(control1, text="Info", command=get_info)
 
     # Grid layout
-    label_patient.grid(column=1, row=1, padx=10, pady=10, columnspan=3, rowspan=2)
+    label_patient.grid(column=1, row=1, padx=10, pady=10, columnspan=3,
+                       rowspan=2)
     label_reason.grid(column=1, row=4, padx=10, pady=10, columnspan=3, rowspan=6)
     label_history.grid(column=1, row=10, padx=10, pady=10, columnspan=3, rowspan=6)
     label_exam.grid(column=16, row=4, padx=10, pady=10, columnspan=3, rowspan=6)

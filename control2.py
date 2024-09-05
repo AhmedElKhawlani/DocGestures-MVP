@@ -8,172 +8,154 @@ import datetime
 from alert import *
 from get_data_from_widget import *
 
-# *************************************************************************************************************
-# ****************************************** function get_info ************************************************
-# *************************************************************************************************************    
 
 def get_info():
     global data
-    BD = sql.connect('data/DOC HAJAR.db')
+    BD = sql.connect('data/data.db')
     cur = BD.cursor()
     patient = str(combo_patient.get())
-    patient_id = patient.split()[0]
-    
-    # Fetch sex and birth year from database
-    cur.execute("SELECT SEXE FROM Patients WHERE ID = ?", (patient_id,))
-    sex = cur.fetchall()[0][0]
-    
-    cur.execute("SELECT ANNEE_NAISSANCE FROM Patients WHERE ID = ?", (patient_id,))
-    birth_year = cur.fetchall()[0][0]
-    
-    # Calculate age
+    ID = patient.split()[0]
+    stat1 = " SELECT Gender FROM Patients WHERE ID = " + ID
+    stat2 = " SELECT Year_of_Birth FROM Patients WHERE ID = " + ID
+    cur.execute(stat1)
+    sexe = cur.fetchall()[0][0]
+    cur.execute(stat2)
+    annee = cur.fetchall()[0][0]
     today = datetime.date.today()
-    age = today.year - birth_year
-
-    # Update labels with fetched data
-    label_sex = Label(controle2, text=sex)
-    label_age = Label(controle2, text=str(age) + " years")
-    label_sex.grid(column=15, row=1, padx=10, pady=10, columnspan=10)
+    year = today.year
+    age = year - annee
+    label_sexe = Label(control2, text=sexe)
+    label_age = Label(control2, text=str(age) + " ans")
+    label_sexe.grid(column=15, row=1, padx=10, pady=10, columnspan=10)
     label_age.grid(column=20, row=1, padx=10, pady=10, columnspan=10)
-    
-    # Fetch last consultation details
-    cur.execute(
-        "SELECT * FROM Consultations WHERE ID_Patient = ? ORDER BY Date_Consultation DESC", (patient_id,)
-    )
-    
+    stat3 = """ SELECT * FROM Consultations WHERE Patient_ID = """ + ID + """ ORDER BY Date_Consultation DESC"""
+    cur.execute(stat3)
     try:
         data = cur.fetchall()[0]
-        (
-            date_consult, motif_consult, antecedent_consult, examens_consult, ordonance_consult, 
-            bilan_consult, resultats, specialiste_consult, avis_specialiste, notes_controle1
-        ) = data[2:12]
+        (date_consult, motif_consult, antecedent_consult, examens_consult,
+         ordonance_consult, bilan_consult, resultats, specialiste_consult,
+         avis_specialiste, control1_consult) = tuple(data[2:12])
+        label_date_consultation = Label(
+            control2,
+            text="Date of the last consultation : " + date_consult
+        )
+        label_date_consultation.grid(column=20, row=2, padx=10, pady=10,
+                                     columnspan=10)
 
-        label_date_consultation = Label(controle2, text="Last consultation date: " + date_consult)
-        label_date_consultation.grid(column=20, row=2, padx=10, pady=10, columnspan=10)
+        entry_reason.delete(0.0, END)
+        entry_history.delete(0.0, END)
+        entry_exam.delete(0.0, END)
+        entry_prescription.delete(0.0, END)
+        entry_tests.delete(0.0, END)
+        entry_specialist.delete(0, END)
+        entry_result.delete(0.0, END)
+        entry_specialist_opinion.delete(0.0, END)
+        entry_control1.delete(0.0, END)
 
-        # Clear previous data in text fields
-        for field in [
-            entry_motif, entry_antecedent, entry_examen, entry_ordonnance, 
-            entry_bilan, entry_resultat, entry_avisspe, entry_controle1
-        ]:
-            field.delete(0.0, END)
-        entry_specialiste.delete(0, END)
+        entry_reason.insert(0.0, motif_consult)
+        entry_history.insert(0.0, antecedent_consult)
+        entry_exam.insert(0.0, examens_consult)
+        entry_prescription.insert(0.0, ordonance_consult)
+        entry_tests.insert(0.0, bilan_consult)
+        entry_specialist.insert(0, specialiste_consult)
+        entry_result.insert(0.0, resultats)
+        entry_specialist_opinion.insert(0.0, avis_specialiste)
+        entry_control1.insert(0.0, control1_consult)
 
-        # Insert new data
-        entry_motif.insert(0.0, motif_consult)
-        entry_antecedent.insert(0.0, antecedent_consult)
-        entry_examen.insert(0.0, examens_consult)
-        entry_ordonnance.insert(0.0, ordonance_consult)
-        entry_bilan.insert(0.0, bilan_consult)
-        entry_resultat.insert(0.0, resultats)
-        entry_specialiste.insert(0, specialiste_consult)
-        entry_avisspe.insert(0.0, avis_specialiste)
-        entry_controle1.insert(0.0, notes_controle1)
-    
-    except IndexError:
-        alert("Error", "No consultations found for this patient")
+    except Exception as e:
+        alert("Error",
+              f"Error: {str(e)},the patient didn't do any consultation")
 
-
-# *************************************************************************************************************
-# *********************************** Save consultation data to database **************************************
-# ************************************************************************************************************* 
 
 def save_record():
     try:
-        BD = sql.connect('data/DOC HAJAR.db')
+        BD = sql.connect('data/data.db')
         cur = BD.cursor()
-        patient_id = str(data[0])
-        controle2_content = get_text_from_text_widget(entry_controle2, 0)
-
-        cur.execute(
-            "UPDATE Consultations SET Controle2 = ? WHERE ID = ?", 
-            (controle2_content.strip(), patient_id)
-        )
+        consult_id = str(data[0])
+        control2_content = get_text_from_text_widget(entry_control2, 0)
+        stat = """ UPDATE Consultations SET Followup2 = """ + control2_content[:-2] + """ WHERE ID = """ + consult_id
+        cur.execute(stat)
         BD.commit()
-        controle2.destroy()
-        alert("Success", "Data saved successfully")
-    
+        control2.destroy()
+        alert("Success", "Saved Successfully")
     except Exception as e:
-        alert("Error", f"Data not saved: {str(e)}")
+        alert("Error",
+              f"Error: {str(e)}, data not saved")
 
-
-# *************************************************************************************************************
-# ********************************** Function to show consultation window *************************************
-# *************************************************************************************************************
 
 def show_control2():
-    global controle2, combo_patient
-    global entry_motif, entry_antecedent, entry_examen, entry_ordonnance, entry_bilan
-    global entry_resultat, entry_specialiste, entry_avisspe, entry_controle1, entry_controle2
+    global control2, combo_patient
+    global entry_reason, entry_history, entry_exam, entry_prescription
+    global entry_tests, entry_result, entry_specialist, entry_specialist_opinion
+    global entry_control1, entry_control2
 
-    controle2 = Tk()
-    controle2.title("DOC HAJAR - Consultation Control")
-    controle2.wm_iconbitmap('data/Hajar.ico')
-    controle2.resizable(width=False, height=False)
+    control2 = Tk()
+    control2.title("DOC GESTURES - Control 2")
+    control2.resizable(width=False, height=False)
 
-    BD = sql.connect('data/DB.db')
+    BD = sql.connect('data/data.db')
     cur = BD.cursor()
-    
-    # Fetch patients' names and IDs
-    cur.execute("SELECT ID, Nom, Prenom FROM Patients ORDER BY Nom")
-    patients = cur.fetchall()
-    patient_names = [f"{patient[0]} - {patient[1]} {patient[2]}" for patient in patients]
+    stat3 = """SELECT ID, Last_Name, First_Name FROM Patients ORDER BY Last_Name"""
+    cur.execute(stat3)
+    patient_names = cur.fetchall()
+    for i in range(len(patient_names)):
+        patient_names[i] = str(patient_names[i][0]) + " - " + patient_names[i][1] + " " + patient_names[i][2]
 
-    # Define labels and fields
-    label_patient = Label(controle2, text="Patient")
-    label_motif = Label(controle2, text="Consultation Motive")
-    label_antecedent = Label(controle2, text="Medical History")
-    label_examen = Label(controle2, text="Examinations")
-    label_ordonnance = Label(controle2, text="Prescription")
-    label_bilan = Label(controle2, text="Requested Tests")
-    label_resultat = Label(controle2, text="Test Results")
-    label_specialiste = Label(controle2, text="Referred to Specialist")
-    label_avisspe = Label(controle2, text="Specialist Opinion")
-    label_controle1 = Label(controle2, text="First Control")
-    label_controle2 = Label(controle2, text="Second Control")
+    label_patient = Label(control2, text="Patient")
+    label_reason = Label(control2, text="Consultation Reason")
+    label_history = Label(control2, text="Medical History")
+    label_exam = Label(control2, text="Exams")
+    label_prescription = Label(control2, text="Prescription")
+    label_tests = Label(control2, text="Requested Tests")
+    label_result = Label(control2, text="Test Results")
+    label_specialist = Label(control2, text="Referred to Specialist")
+    label_specialist_opinion = Label(control2, text="Specialist Opinion")
+    label_control1 = Label(control2, text="Control 1")
+    label_control2 = Label(control2, text="Control 2")
 
-    combo_patient = ttk.Combobox(controle2)
+    combo_patient = ttk.Combobox(control2)
+    entry_reason = Text(control2, height=5, width=30)
+    entry_history = Text(control2, height=5, width=30)
+    entry_exam = Text(control2, height=5, width=30)
+    entry_prescription = Text(control2, height=5, width=30)
+    entry_tests = Text(control2, height=5, width=30)
+    entry_result = Text(control2, height=5, width=30)
+    entry_specialist = Entry(control2)
+    entry_specialist_opinion = Text(control2, height=5, width=30)
+    entry_control1 = Text(control2, height=5, width=30)
+    entry_control2 = Text(control2, height=5, width=30)
+    button_save_to_db = Button(control2, text="Save Data", command=save_record)
+    button_get_data = Button(control2, text="Info", command=get_info)
+
+    # Grid layout
+    label_patient.grid(column=1, row=1, padx=10, pady=10, columnspan=3,
+                       rowspan=2)
+    label_reason.grid(column=1, row=4, padx=10, pady=10, columnspan=3, rowspan=6)
+    label_history.grid(column=1, row=10, padx=10, pady=10, columnspan=3, rowspan=6)
+    label_exam.grid(column=16, row=4, padx=10, pady=10, columnspan=3, rowspan=6)
+    label_prescription.grid(column=16, row=10, padx=10, pady=10, columnspan=3, rowspan=6)
+    label_tests.grid(column=1, row=28, padx=10, pady=10, columnspan=3, rowspan=6)
+    label_result.grid(column=16, row=28, padx=10, pady=10, columnspan=3, rowspan=6)
+    label_specialist.grid(column=1, row=40, padx=10, pady=10, columnspan=3, rowspan=6)
+    label_specialist_opinion.grid(column=16, row=40, padx=10, pady=10, columnspan=3, rowspan=6)
+    label_control1.grid(column=1, row=52, padx=10, pady=10, columnspan=3, rowspan=6)
+    label_control2.grid(column=16, row=52, padx=10, pady=10, columnspan=3, rowspan=6)
+
     combo_patient['values'] = patient_names
-
-    entry_motif = Text(controle2, height=5, width=30)
-    entry_antecedent = Text(controle2, height=5, width=30)
-    entry_examen = Text(controle2, height=5, width=30)
-    entry_ordonnance = Text(controle2, height=5, width=30)
-    entry_bilan = Text(controle2, height=5, width=30)
-    entry_resultat = Text(controle2, height=5, width=30)
-    entry_specialiste = Entry(controle2)
-    entry_avisspe = Text(controle2, height=5, width=30)
-    entry_controle1 = Text(controle2, height=5, width=30)
-    entry_controle2 = Text(controle2, height=5, width=30)
-
-    button_save_to_db = Button(controle2, text="Save Data", command=save_record)
-    button_get_data = Button(controle2, text="Fetch Info", command=get_info)
-
-    # Grid layout for widgets
-    label_patient.grid(column=1, row=1, padx=10, pady=10, columnspan=3, rowspan=2)
-    label_motif.grid(column=1, row=4, padx=10, pady=10, columnspan=3, rowspan=6)
-    label_antecedent.grid(column=1, row=10, padx=10, pady=10, columnspan=3, rowspan=6)
-    label_examen.grid(column=16, row=4, padx=10, pady=10, columnspan=3, rowspan=6)
-    label_ordonnance.grid(column=16, row=10, padx=10, pady=10, columnspan=3, rowspan=6)
-    label_bilan.grid(column=1, row=28, padx=10, pady=10, columnspan=3, rowspan=6)
-    label_resultat.grid(column=16, row=28, padx=10, pady=10, columnspan=3, rowspan=6)
-    label_specialiste.grid(column=1, row=40, padx=10, pady=10, columnspan=3, rowspan=6)
-    label_avisspe.grid(column=16, row=40, padx=10, pady=10, columnspan=3, rowspan=6)
-    label_controle1.grid(column=1, row=52, padx=10, pady=10, columnspan=3, rowspan=6)
-    label_controle2.grid(column=16, row=52, padx=10, pady=10, columnspan=3, rowspan=6)
-
-    combo_patient.grid(column=5, row=1, padx=10, pady=10, columnspan=10, rowspan=2)
     button_get_data.grid(column=10, row=1, padx=10, pady=10, columnspan=10, rowspan=2)
-    entry_motif.grid(column=5, row=4, padx=10, pady=10, columnspan=10, rowspan=3)
-    entry_antecedent.grid(column=5, row=10, padx=10, pady=10, columnspan=10, rowspan=3)
-    entry_examen.grid(column=22, row=4, padx=10, pady=10, columnspan=10, rowspan=3)
-    entry_ordonnance.grid(column=22, row=10, padx=10, pady=10, columnspan=10, rowspan=3)
-    entry_bilan.grid(column=5, row=28, padx=10, pady=10, columnspan=10, rowspan=3)
-    entry_resultat.grid(column=22, row=28, padx=10, pady=10, columnspan=10, rowspan=3)
-    entry_specialiste.grid(column=5, row=40, padx=10, pady=10, columnspan=10, rowspan=3)
-    entry_avisspe.grid(column=22, row=40, padx=10, pady=10, columnspan=10, rowspan=3)
-    entry_controle1.grid(column=5, row=52, padx=10, pady=10, columnspan=10, rowspan=3)
-    entry_controle2.grid(column=22, row=52, padx=10, pady=10, columnspan=10, rowspan=3)
-    button_save_to_db.grid(column=15, row=60, padx=10, pady=10, columnspan=10, rowspan=3)
+    entry_reason.grid(column=5, row=4, padx=10, pady=10, columnspan=10, rowspan=3)
+    entry_history.grid(column=5, row=10, padx=10, pady=10, columnspan=10, rowspan=3)
+    entry_exam.grid(column=22, row=4, padx=10, pady=10, columnspan=10, rowspan=3)
+    entry_prescription.grid(column=22, row=10, padx=10, pady=10, columnspan=10, rowspan=3)
+    entry_tests.grid(column=5, row=28, padx=10, pady=10, columnspan=10, rowspan=3)
+    entry_result.grid(column=22, row=28, padx=10, pady=10, columnspan=10, rowspan=3)
+    entry_specialist.grid(column=5, row=40, padx=10, pady=10, columnspan=10, rowspan=3)
+    entry_specialist_opinion.grid(column=22, row=40, padx=10, pady=10, columnspan=10, rowspan=3)
+    entry_control1.grid(column=5, row=52, padx=10, pady=10, columnspan=10, rowspan=3)
+    entry_control2.grid(column=22, row=52, padx=10, pady=10, columnspan=10, rowspan=3)
+    button_save_to_db.grid(column=26, row=56, padx=10, pady=10, columnspan=10, rowspan=2)
+    combo_patient.grid(column=5, row=1, padx=10, pady=10, columnspan=10, rowspan=2)
 
-    controle2.mainloop()
+    control2.mainloop()
+
+show_control2()
