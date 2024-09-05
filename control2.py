@@ -157,5 +157,3 @@ def show_control2():
     combo_patient.grid(column=5, row=1, padx=10, pady=10, columnspan=10, rowspan=2)
 
     control2.mainloop()
-
-show_control2()
